@@ -4,8 +4,9 @@ import datetime
 
 
 class __JSONEncoder(json.JSONEncoder):
-	"""JSON Encoder to handle datetime.datetime objects"""
-	
+    """
+    JSON Encoder to handle datetime.datetime objects
+    """
     #pylint: disable=E0202
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
@@ -14,7 +15,7 @@ class __JSONEncoder(json.JSONEncoder):
 
 
 def catch(func):
-	"""Decorator to catch exceptions and return a meaningful traceback"""
+    """Decorator to catch exceptions and return a meaningful traceback"""
     def __callback(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -25,13 +26,13 @@ def catch(func):
 
 
 def json_request(func):
-	"""
-	Decorator to pass the decoded json body of the request as a dict to the endpoint method.
-	
-	>>> @json_request
-	>>> def my_endpoint(body: dict) -> str:
-	>>> 		return body.get("property_1")
-	"""
+    """
+    Decorator to pass the decoded json body of the request as a dict to the endpoint method.
+    
+    >>> @json_request
+    >>> def my_endpoint(body: dict) -> str:
+    >>>         return body.get("property_1")
+    """
     def __callback(*args, **kwargs):
         if type(request.json) is dict:
             body = request.json
@@ -44,23 +45,23 @@ def json_request(func):
 
 
 class json_request_required:
-	"""
-	Decorator to pass the decoded json body of the request as a dict to the endpoint method.
-	Validate that the json body contains at least the required properties.
-	
-	>>> @json_request_required("str:name", "str:job", "int:age", "float:cash")
-	>>> def my_endpoint(body: dict) -> str:
-	>>> 		return body["name"]		# safe
-	"""
+    """
+    Decorator to pass the decoded json body of the request as a dict to the endpoint method.
+    Validate that the json body contains at least the required properties.
+    
+    >>> @json_request_required("str:name", "str:job", "int:age", "float:cash")
+    >>> def my_endpoint(body: dict) -> str:
+    >>>         return body["name"]        # safe
+    """
     def __init__(self, *args):
         self.required = args
 
     @staticmethod
     def verify_json(obj, required):
-		"""
-		Static method to validate that the json body contains at least the required properties.
-		"""
-        import datetime
+        """
+        Static method to validate that the json body contains at least the required properties.
+        """
+        # import datetime
         errors = {}
         __types = {
             "any": "any",
@@ -109,13 +110,13 @@ class json_request_required:
 
 
 def querystring_request(func):
-	"""
-	Decorator to pass the querystring dict to the endpoint method.
-	
-	>>> @querystring_request
-	>>> def my_endpoint(querystring: dict) -> str:
-	>>> 		return querystring.get("property_1")
-	"""
+    """
+    Decorator to pass the querystring dict to the endpoint method.
+    
+    >>> @querystring_request
+    >>> def my_endpoint(querystring: dict) -> str:
+    >>>         return querystring.get("property_1")
+    """
     def __callback(*args, **kwargs):
         qs = request.args
         if qs is None:
@@ -125,13 +126,13 @@ def querystring_request(func):
 
 
 def headers_request(func):
-	"""
-	Decorator to pass the headers dict to the endpoint method.
-	
-	>>> @headers_request
-	>>> def my_endpoint(headers: dict) -> str:
-	>>> 		return headers.get("property_1")
-	"""
+    """
+    Decorator to pass the headers dict to the endpoint method.
+    
+    >>> @headers_request
+    >>> def my_endpoint(headers: dict) -> str:
+    >>>         return headers.get("property_1")
+    """
     def __callback(*args, **kwargs):
         headers = request.headers
         if headers is None:
@@ -141,13 +142,13 @@ def headers_request(func):
 
 
 def cookies_request(func):
-	"""
-	Decorator to pass the cookies dict to the endpoint method.
-	
-	>>> @cookies_request
-	>>> def my_endpoint(cookies: dict) -> str:
-	>>> 		return cookies.get("property_1")
-	"""
+    """
+    Decorator to pass the cookies dict to the endpoint method.
+    
+    >>> @cookies_request
+    >>> def my_endpoint(cookies: dict) -> str:
+    >>>         return cookies.get("property_1")
+    """
     def __callback(*args, **kwargs):
         cookies = request.cookies
         if cookies is None:
@@ -157,13 +158,13 @@ def cookies_request(func):
 
 
 def body_request(func):
-	"""
-	Decorator to pass the raw body to the endpoint method.
-	
-	>>> @body_request
-	>>> def my_endpoint(body: dict) -> str:
-	>>> 		return body.get("property_1")
-	"""
+    """
+    Decorator to pass the raw body to the endpoint method.
+    
+    >>> @body_request
+    >>> def my_endpoint(body: dict) -> str:
+    >>>         return body.get("property_1")
+    """
     def __callback(*args, **kwargs):
         body = request.data
         if body is None:
@@ -173,15 +174,15 @@ def body_request(func):
 
 
 def json_response(func):
-	"""
-	Decorator to return the appropriate json response object from anything decodable to json.
-	
-	>>> @json_response
-	>>> def my_endpoint(body: dict) -> str:
-	>>>		l = [10, 8, 5]
-	>>> 		return {'name':  'Test', 'grades': l}, 200
-	Response('{"name":"Test","grades":[10,8,5]}', status=200, mimetype='application/json')
-	"""
+    """
+    Decorator to return the appropriate json response object from anything decodable to json.
+    
+    >>> @json_response
+    >>> def my_endpoint(body: dict) -> str:
+    >>>        l = [10, 8, 5]
+    >>>         return {'name':  'Test', 'grades': l}, 200
+    Response('{"name":"Test","grades":[10,8,5]}', status=200, mimetype='application/json')
+    """
     def __callback(*args, **kwargs):
         result = func(*args, **kwargs)
         if not isinstance(result, (list, tuple)):
@@ -197,12 +198,12 @@ def json_response(func):
 
 
 class RouteFactory:
-	"""Class to generate routes for http methods and paths."""
+    """Class to generate routes for http methods and paths."""
     def __init__(self, app):
         self.app = app
-	
+    
     def __wrap_route(self, route, method, **options):
-		"""Decorate the function on the flask @route for the route and method."""
+        """Decorate the function on the flask @route for the route and method."""
         methods = {m for m in options.get("methods", [])}
         if method not in methods:
             methods.add(method)
@@ -215,51 +216,51 @@ class RouteFactory:
         return __wrap
 
     def options(self, route, **options):
-		"""
-		Create an endpoint for the route and method OPTIONS.
-		
-		:param route: any flask valid route
-		:param options: any flask @route valid option
-		:returns: self.app.route(route, methods=['OPTIONS'], **options)
-		"""
+        """
+        Create an endpoint for the route and method OPTIONS.
+        
+        :param route: any flask valid route
+        :param options: any flask @route valid option
+        :returns: self.app.route(route, methods=['OPTIONS'], **options)
+        """
         return self.__wrap_route(route, 'OPTIONS', **options)
 
     def get(self, route, **options):
-		"""
-		Create an endpoint for the route and method GET.
-		
-		:param route: any flask valid route
-		:param options: any flask @route valid option
-		:returns: self.app.route(route, methods=['GET'], **options)
-		"""
+        """
+        Create an endpoint for the route and method GET.
+        
+        :param route: any flask valid route
+        :param options: any flask @route valid option
+        :returns: self.app.route(route, methods=['GET'], **options)
+        """
         return self.__wrap_route(route, 'GET', **options)
 
     def post(self, route, **options):
-		"""
-		Create an endpoint for the route and method POST.
-		
-		:param route: any flask valid route
-		:param options: any flask @route valid option
-		:returns: self.app.route(route, methods=['POST'], **options)
-		"""
+        """
+        Create an endpoint for the route and method POST.
+        
+        :param route: any flask valid route
+        :param options: any flask @route valid option
+        :returns: self.app.route(route, methods=['POST'], **options)
+        """
         return self.__wrap_route(route, 'POST', **options)
 
     def put(self, route, **options):
-		"""
-		Create an endpoint for the route and method PUT.
-		
-		:param route: any flask valid route
-		:param options: any flask @route valid option
-		:returns: self.app.route(route, methods=['PUT'], **options)
-		"""
+        """
+        Create an endpoint for the route and method PUT.
+        
+        :param route: any flask valid route
+        :param options: any flask @route valid option
+        :returns: self.app.route(route, methods=['PUT'], **options)
+        """
         return self.__wrap_route(route, 'PUT', **options)
 
     def delete(self, route, **options):
-		"""
-		Create an endpoint for the route and method DELETE.
-		
-		:param route: any flask valid route
-		:param options: any flask @route valid option
-		:returns: self.app.route(route, methods=['DELETE'], **options)
-		"""
+        """
+        Create an endpoint for the route and method DELETE.
+        
+        :param route: any flask valid route
+        :param options: any flask @route valid option
+        :returns: self.app.route(route, methods=['DELETE'], **options)
+        """
         return self.__wrap_route(route, 'DELETE', **options)
