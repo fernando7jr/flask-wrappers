@@ -1,28 +1,40 @@
 from flask import request, Response
 import json
+from bson.timestamp import Timestamp
 import datetime
 
 
-class __JSONEncoder(json.JSONEncoder):
+class _JSONEncoder(json.JSONEncoder):
     """
     JSON Encoder to handle datetime.datetime objects
     """
     #pylint: disable=E0202
     def default(self, obj):
+        if isinstance(obj, Timestamp):
+            obj = obj.as_datetime()
         if isinstance(obj, datetime.datetime):
             return obj.isoformat()
+        if isinstance(obj, bytes):
+            return "<bytes>"
         return json.JSONEncoder.default(self, obj)
+
+
+def encode_json(value):
+    return json.dumps(value, cls=_JSONEncoder)
 
 
 def catch(func):
     """Decorator to catch exceptions and return a meaningful traceback"""
-    def __callback(*args, **kwargs):
+    def __callback__(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except:
             import traceback
-            return str(traceback.format_exc()), 500
-    return __callback
+            import sys
+            error = traceback.format_exc()
+            print(error, file=sys.stderr)
+            return str(error), 500
+    return __callback__
 
 
 def json_request(func):
@@ -33,15 +45,18 @@ def json_request(func):
     >>> def my_endpoint(body: dict) -> str:
     >>>         return body.get("property_1")
     """
-    def __callback(*args, **kwargs):
+    def __callback__(*args, **kwargs):
         if type(request.json) is dict:
             body = request.json
+        elif request.json is None:
+            body = None
         else:
             body = request.json()
         if body is None:
-            raise AssertionError("Request body is not application/json")
+            # raise AssertionError("Request body is not application/json")
+            return Response("Request body is not application/json", 406)
         return func(body, *args, **kwargs)
-    return __callback
+    return __callback__
 
 
 class json_request_required:
@@ -71,7 +86,7 @@ class json_request_required:
             "bool": bool,
             "list": list,
             "dict": dict,
-            # "datetime": datetime.datetime
+            "datetime": str
         }
         for key in required:
             key = str(key)
@@ -90,6 +105,20 @@ class json_request_required:
                     raise AssertionError(_type_name + " is not a valid type. The valid types are: " + ' '.join(__types.keys()) + ".")
                 elif type(obj[key]) is not _type:
                     errors[key] = "is not of type " + _type_name
+                if _type_name == "datetime":
+                    _value = obj[key]
+                    _value = _value.replace("/", "-")
+                    try:
+                        if "T" in _value:
+                            _value: str = _value[:-1] if _value.endswith("Z") else _value
+                            if "." in _value:
+                                obj[key] = datetime.datetime.strptime(_value, "%Y-%m-%dT%H:%M:%S.%f")
+                            else:
+                                obj[key] = datetime.datetime.strptime(_value, "%Y-%m-%dT%H:%M:%S")
+                        else:
+                            obj[key] = datetime.datetime.strptime(_value, "%Y-%m-%d")
+                    except:
+                        errors[key] = "{0} is not compatible to {1}".format(_value, _type_name)
         return errors
 
     def __verify_json(self, obj):
@@ -101,12 +130,12 @@ class json_request_required:
         return json_request_required.verify_json(obj, required)
 
     def __call__(self, func):
-        def __callback(body, *args, **kwargs):
+        def __callback__(body, *args, **kwargs):
             result = self.__verify_json(body)
             if result:
                 raise AssertionError("Some keys did not meet the requirements: {0}".format(result))
             return func(body, *args, **kwargs)
-        return json_request(__callback)
+        return json_request(__callback__)
 
 
 def querystring_request(func):
@@ -117,12 +146,12 @@ def querystring_request(func):
     >>> def my_endpoint(querystring: dict) -> str:
     >>>         return querystring.get("property_1")
     """
-    def __callback(*args, **kwargs):
+    def __callback__(*args, **kwargs):
         qs = request.args
         if qs is None:
             qs = {}
         return func(qs, *args, **kwargs)
-    return __callback
+    return __callback__
 
 
 def headers_request(func):
@@ -133,12 +162,12 @@ def headers_request(func):
     >>> def my_endpoint(headers: dict) -> str:
     >>>         return headers.get("property_1")
     """
-    def __callback(*args, **kwargs):
+    def __callback__(*args, **kwargs):
         headers = request.headers
         if headers is None:
             headers = {}
         return func(headers, *args, **kwargs)
-    return __callback
+    return __callback__
 
 
 def cookies_request(func):
@@ -149,12 +178,13 @@ def cookies_request(func):
     >>> def my_endpoint(cookies: dict) -> str:
     >>>         return cookies.get("property_1")
     """
-    def __callback(*args, **kwargs):
+    def __callback__(*args, **kwargs):
         cookies = request.cookies
         if cookies is None:
             cookies = {}
         return func(cookies, *args, **kwargs)
-    return __callback
+    __callback__.__name__ = func.__name__ + str(id(__callback__))
+    return __callback__
 
 
 def body_request(func):
@@ -165,12 +195,38 @@ def body_request(func):
     >>> def my_endpoint(body: dict) -> str:
     >>>         return body.get("property_1")
     """
-    def __callback(*args, **kwargs):
+    def __callback__(*args, **kwargs):
         body = request.data
         if body is None:
             body = {}
         return func(body, *args, **kwargs)
-    return __callback
+    __callback__.__name__ = func.__name__ + str(id(__callback__))
+    return __callback__
+
+
+def mime_type_response(mimetype, encoder=None):
+    def __wrap(func):
+        def __callback__(*args, **kwargs):
+            result = func(*args, **kwargs)
+            if not isinstance(result, (list, tuple)):
+                result = result, 200
+            
+            if len(result) == 0:
+                result = "", 200
+            elif len(result) == 1:
+                result = result[0], 200
+            
+            if encoder is not None:
+                result = encoder(result[0]), result[1]
+            return Response(
+                response=result[0],
+                status=result[1],
+                mimetype=mimetype
+            )
+        
+        return __callback__
+        
+    return __wrap
 
 
 def json_response(func):
@@ -183,18 +239,8 @@ def json_response(func):
     >>>         return {'name':  'Test', 'grades': l}, 200
     Response('{"name":"Test","grades":[10,8,5]}', status=200, mimetype='application/json')
     """
-    def __callback(*args, **kwargs):
-        result = func(*args, **kwargs)
-        if not isinstance(result, (list, tuple)):
-            result = result, 200
-        
-        if len(result) == 0:
-            result = "", 200
-        elif len(result) == 1:
-            result = result[0], 200
-        
-        return Response(response=json.dumps(result[0], cls=__JSONEncoder), status=result[1], mimetype='application/json')
-    return __callback
+
+    return mime_type_response("application/json", encoder=encode_json)(func)
 
 
 class RouteFactory:
@@ -209,10 +255,10 @@ class RouteFactory:
             methods.add(method)
         options["methods"] = [m for m in methods]
         def __wrap(func):
-            def __callback(*args, **kwargs):
+            def __callback__(*args, **kwargs):
                 return func(*args, **kwargs)
-            __callback.__name__ = func.__name__ + str(id(__callback))
-            return self.app.route(route, **options)(__callback)
+            __callback__.__name__ = func.__name__ + str(id(__callback__))
+            return self.app.route(route, **options)(__callback__)
         return __wrap
 
     def options(self, route, **options):
