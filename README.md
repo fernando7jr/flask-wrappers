@@ -18,7 +18,7 @@ def my_endpoint():
     raise ValueError()
 ```
 
-### json\_request
+### json_request
 
 Decorator to pass the decoded json body of the request as a dict to the endpoint method.
 
@@ -28,7 +28,7 @@ def my_endpoint(body):
     return body.get("property_1")
 ```
 
-### json\_request\_required:
+### json_request_required:
 
 Decorator to pass the decoded json body of the request as a dict to the endpoint method.
 	Validate that the json body contains at least the required properties.
@@ -38,7 +38,7 @@ Decorator to pass the decoded json body of the request as a dict to the endpoint
 def my_endpoint(body):
     return body["name"] # safe
 ```
-### querystring\_request
+### querystring_request
 
 Decorator to pass the querystring dict to the endpoint method.
 	
@@ -48,7 +48,7 @@ def my_endpoint(querystring):
     return querystring.get("property_1")
 ```
 
-### headers\_request
+### headers_request
 
 Decorator to pass the headers dict to the endpoint method.
 	
@@ -58,7 +58,7 @@ def my_endpoint(headers):
     return headers.get("property_1")
 ```
 
-### cookies\_request
+### cookies_request
 
 Decorator to pass the cookies dict to the endpoint method.
 	
@@ -78,7 +78,7 @@ def my_endpoint(body):
     return body.get("property_1")
 ```
 
-### json\_response
+### json_response
 
 Decorator to return the appropriate json response object from anything decodable to json.
 	
